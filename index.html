@@ -1,117 +1,717 @@
-<!-- https://eclipse.dev/paho/clients/js/ -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MQTT Client</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor de Ritmo Cardíaco</title>
+    
+    <!-- Materialize CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    
+    <style>
+        .heart-icon {
+            animation: heartbeat 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes heartbeat {
+            0% { transform: scale(1); }
+            20% { transform: scale(1.1); }
+            40% { transform: scale(1); }
+        }
+        
+        .status-connected {
+            color: #4caf50;
+        }
+        
+        .status-disconnected {
+            color: #f44336;
+        }
+        
+        .bpm-display {
+            font-size: 3rem;
+            font-weight: bold;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 20px;
+        }
+        
+        .pulse-animation {
+            animation: pulse 0.6s;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /*.danger-alert {
+            animation: dangerPulse 1s ease-in-out infinite;
+            background: linear-gradient(45deg, #ff5722, #f44336) !important;
+            color: white !important;
+        }*/
+        
+        @keyframes dangerPulse {
+            0% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(244, 67, 54, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0); }
+        }
+        
+        /*.warning-alert {
+            background: linear-gradient(45deg, #ff9800, #ffc107) !important;
+            color: white !important;
+        }*/
+        
+        /*.normal-state {
+            background: linear-gradient(45deg, #4caf50, #8bc34a) !important;
+            color: white !important;
+        }*/
+        
+        .emergency-modal .modal-content {
+            padding: 30px;
+        }
+        
+        .blinking-alert {
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+    </style>
 </head>
-<body class="bg-light">
+<body class="grey lighten-4">
+    <!-- Navbar -->
+    <nav class="red darken-2">
+        <div class="nav-wrapper container">
+            <a href="#" class="brand-logo">
+                <i class="material-icons left">favorite</i>
+                Monitor Cardíaco
+            </a>
+            <ul class="right">
+                <li>
+                    <span id="connectionStatus" class="status-disconnected">
+                        <i class="material-icons left">wifi_off</i>
+                        Desconectado
+                    </span>
+                </li>
+            </ul>
+        </div>
+    </nav>
 
-  <div class="container mt-5">
-    <div class="card shadow-lg">
-      <div class="card-header bg-primary text-white">
-        <h4 class="mb-0">Cliente MQTT</h4>
-      </div>
-      <div class="card-body">
-        <p class="text-muted">Solo se permiten mensajes XML. Se usará la etiqueta <code>&lt;mensaje&gt;</code>.</p>
-
-        <div class="input-group mb-3">
-          <input type="text" id="mensaje" class="form-control" placeholder="Escribe tu mensaje">
-          <button class="btn btn-primary" onclick="enviarMensaje()">Enviar</button>
+    <div class="container" style="margin-top: 30px;">
+        <!-- Tarjeta principal del ritmo cardíaco -->
+        <div class="row">
+            <div class="col s12 m6">
+                <div class="card" id="mainBpmCard">
+                    <div class="card-content center-align">
+                        <br>
+                        <span class="card-title">
+                            <i class="material-icons large heart-icon red-text" id="heartIcon">favorite</i>
+                            <br>Ritmo Cardíaco
+                        </span>
+                        <div id="bpmDisplay" class="bpm-display red-text">--</div>
+                        <p class="grey-text">BPM</p>
+                        <div id="bpmStatus" class="chip green white-text" style="display: none;">
+                            <i class="material-icons left">check_circle</i>
+                            Normal
+                        </div>
+                        <div id="lastUpdate" class="grey-text text-darken-1">
+                            Esperando datos...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Información del sensor -->
+            <div class="col s12 m6">
+                <div class="card">
+                    <div class="card-content">
+                        <span class="card-title">
+                            <i class="material-icons left">device_hub</i>
+                            Información del Sensor
+                        </span>
+                        <div class="row">
+                            <div class="col s6">
+                                <strong>Sensor:</strong><br>
+                                <span id="sensorName" class="grey-text">--</span>
+                            </div>
+                            <div class="col s6">
+                                <strong>Estado:</strong><br>
+                                <span id="sensorStatus" class="grey-text">Inactivo</span>
+                            </div>
+                        </div>
+                        <div class="row" style="margin-top: 20px;">
+                            <div class="col s12">
+                                <strong>Última lectura:</strong><br>
+                                <span id="timestamp" class="grey-text">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <h5 class="mt-4">Mensajes recibidos:</h5>
-        <ul class="list-group" id="lista-mensajes"></ul>
-      </div>
+        <!-- Gráfico -->
+        <div class="row">
+            <div class="col s12">
+                <div class="card">
+                    <div class="card-content">
+                        <span class="card-title">
+                            <i class="material-icons left">show_chart</i>
+                            Historial de Ritmo Cardíaco
+                        </span>
+                        <div class="chart-container">
+                            <canvas id="heartRateChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estadísticas -->
+        <div class="row">
+            <div class="col s12 m4">
+                <div class="card blue lighten-4">
+                    <div class="card-content center-align">
+                        <i class="material-icons medium blue-text">trending_up</i>
+                        <h5 id="maxBpm" class="blue-text">--</h5>
+                        <p>BPM Máximo</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col s12 m4">
+                <div class="card green lighten-4">
+                    <div class="card-content center-align">
+                        <i class="material-icons medium green-text">timeline</i>
+                        <h5 id="avgBpm" class="green-text">--</h5>
+                        <p>BPM Promedio</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col s12 m4">
+                <div class="card orange lighten-4">
+                    <div class="card-content center-align">
+                        <i class="material-icons medium orange-text">trending_down</i>
+                        <h5 id="minBpm" class="orange-text">--</h5>
+                        <p>BPM Mínimo</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js"></script>
-  <script>
-    const client = new Paho.MQTT.Client("localhost", 80, "clientId" + parseInt(Math.random() * 1000));
+    <!-- Modal de Emergencia -->
+    <div id="emergencyModal" class="modal emergency-modal">
+        <div class="modal-content">
+            <div class="center-align">
+                <i class="material-icons large red-text blinking-alert">warning</i>
+                <h4 class="red-text">¡ALERTA DE EMERGENCIA!</h4>
+                <h5 id="emergencyBpm" class="red-text"></h5>
+                <p class="flow-text">Se ha detectado un ritmo cardíaco peligroso</p>
+            </div>
+            
+            <div class="divider" style="margin: 20px 0;"></div>
+            
+            <div class="row">
+                <div class="input-field col s12">
+                    <i class="material-icons prefix">message</i>
+                    <textarea id="emergencyMessage" class="materialize-textarea" placeholder="Agregar información adicional (opcional)"></textarea>
+                    <label for="emergencyMessage">Mensaje de Emergencia</label>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="input-field col s12">
+                    <i class="material-icons prefix">send</i>
+                    <input id="emergencyTopic" type="text" value="sensor/emergencia" class="validate">
+                    <label for="emergencyTopic">Canal de Emergencia</label>
+                </div>
+            </div>
+            
+            <div class="center-align" style="margin-top: 20px;">
+                <p class="grey-text">
+                    <i class="material-icons tiny">access_time</i>
+                    Tiempo transcurrido: <span id="emergencyTimer">0</span> segundos
+                </p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <a href="#!" class="modal-close waves-effect waves-red btn-flat">Ignorar</a>
+            <a href="#!" class="waves-effect waves-green btn red" onclick="sendEmergencyAlert()">
+                <i class="material-icons left">local_hospital</i>
+                Enviar Alerta de Emergencia
+            </a>
+        </div>
+    </div>
 
-    client.onConnectionLost = onConnectionLost;
-    client.onMessageArrived = onMessageArrived;
+    <!-- Modal de Configuración de Alertas -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <h4><i class="material-icons left">settings</i>Configuración de Alertas</h4>
+            <div class="row">
+                <div class="input-field col s6">
+                    <input id="dangerLow" type="number" value="50" class="validate">
+                    <label for="dangerLow">BPM Peligroso Bajo</label>
+                </div>
+                <div class="input-field col s6">
+                    <input id="dangerHigh" type="number" value="100" class="validate">
+                    <label for="dangerHigh">BPM Peligroso Alto</label>
+                </div>
+            </div>
+            <div class="row">
+                <div class="input-field col s6">
+                    <input id="warningLow" type="number" value="60" class="validate">
+                    <label for="warningLow">BPM Advertencia Bajo</label>
+                </div>
+                <div class="input-field col s6">
+                    <input id="warningHigh" type="number" value="90" class="validate">
+                    <label for="warningHigh">BPM Advertencia Alto</label>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <a href="#!" class="modal-close waves-effect waves-green btn-flat">Cancelar</a>
+            <a href="#!" class="modal-close waves-effect waves-green btn" onclick="saveSettings()">Guardar</a>
+        </div>
+    </div>
 
-    client.connect({
-      onSuccess: onConnect,
-      onFailure: (e) => console.log("Fallo en la conexión: ", e),
-      useSSL: false
-    });
+    <!-- Botón flotante para configuración -->
+    <div class="fixed-action-btn">
+        <a class="btn-floating btn-large red modal-trigger" href="#settingsModal">
+            <i class="large material-icons">settings</i>
+        </a>
+    </div>
 
-    function onConnect() {
-      console.log("Conectado al broker MQTT.");
-      client.subscribe("tecnologias/prueba");
-    }
+    <!-- Materialize JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <!-- Paho MQTT -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js"></script>
+    
+    <script>
+        // Variables globales
+        let heartRateChart;
+        let heartRateData = [];
+        let timeLabels = [];
+        let maxDataPoints = 20;
+        let bpmHistory = [];
+        
+        // Configuración de alertas
+        let alertSettings = {
+            dangerLow: 50,
+            dangerHigh: 100,
+            warningLow: 60,
+            warningHigh: 90
+        };
+        
+        // Variables de emergencia
+        let emergencyTimer = null;
+        let emergencyStartTime = null;
+        let lastEmergencyAlert = 0;
+        let emergencyModalInstance = null;
 
-    function onConnectionLost(responseObject) {
-      if (responseObject.errorCode !== 0) {
-        console.log("Conexión perdida: " + responseObject.errorMessage);
-      }
-    }
+        // Inicializar gráfico
+        function initChart() {
+            const ctx = document.getElementById('heartRateChart').getContext('2d');
+            heartRateChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timeLabels,
+                    datasets: [{
+                        label: 'Ritmo Cardíaco (BPM)',
+                        data: heartRateData,
+                        borderColor: '#f44336',
+                        backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#f44336',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 20,
+                            max: 140,
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            },
+                            title: {
+                                display: true,
+                                text: 'BPM'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Tiempo'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    animation: {
+                        duration: 750
+                    }
+                }
+            });
+        }
 
-    function wrapInXMLIfNeeded(texto) {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(texto, "application/xml");
-      const isValid = !doc.querySelector("parsererror");
-      const isWrapped = doc.documentElement.nodeName === "mensaje";
+        // Actualizar gráfico
+        function updateChart(bpm, time) {
+            heartRateData.push(bpm);
+            timeLabels.push(time);
+            bpmHistory.push(bpm);
 
-      if (isValid && isWrapped) {
-        return texto; 
-      }
+            // Mantener solo los últimos datos
+            if (heartRateData.length > maxDataPoints) {
+                heartRateData.shift();
+                timeLabels.shift();
+            }
 
-      const escapedText = texto
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
+            heartRateChart.update('none');
+        }
 
-      return `<mensaje>${escapedText}</mensaje>`;
-    }
+        // Actualizar estadísticas
+        function updateStats() {
+            if (bpmHistory.length === 0) return;
 
-    function extractMensajeTexto(xmlString) {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(xmlString, "application/xml");
-      const error = doc.querySelector("parsererror");
-      if (error) return null;
+            const maxBpm = Math.max(...bpmHistory);
+            const minBpm = Math.min(...bpmHistory);
+            const avgBpm = Math.round(bpmHistory.reduce((a, b) => a + b, 0) / bpmHistory.length);
 
-      const mensajeTag = doc.querySelector("mensaje");
-      return mensajeTag?.textContent || null;
-    }
+            document.getElementById('maxBpm').textContent = maxBpm;
+            document.getElementById('minBpm').textContent = minBpm;
+            document.getElementById('avgBpm').textContent = avgBpm;
+        }
 
-    function enviarMensaje() {
-      const input = document.getElementById('mensaje');
-      const mensajeTexto = input.value;
-      if (mensajeTexto.trim() === "") return;
+        // Formatear timestamp
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleString('es-ES');
+        }
 
-      const xmlMensaje = wrapInXMLIfNeeded(mensajeTexto);
+        // Formatear tiempo para el gráfico
+        function formatTimeForChart(timestamp) {
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleTimeString('es-ES', { 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit' 
+            });
+        }
 
-      const message = new Paho.MQTT.Message(xmlMensaje);
-      message.destinationName = "tecnologias/prueba";
-      client.send(message);
-      console.log("Mensaje enviado: " + xmlMensaje);
-      input.value = "";
-    }
+        // Determinar el estado del BPM
+        function getBpmStatus(bpm) {
+            if (bpm <= alertSettings.dangerLow || bpm >= alertSettings.dangerHigh) {
+                return 'danger';
+            } else if (bpm <= alertSettings.warningLow || bpm >= alertSettings.warningHigh) {
+                return 'warning';
+            } else {
+                return 'normal';
+            }
+        }
 
-    function onMessageArrived(message) {
-      const payload = message.payloadString;
-      console.log("Mensaje recibido: " + payload);
+        // Actualizar el estado visual del BPM
+        function updateBpmVisualState(status, bpm) {
+            const mainCard = document.getElementById('mainBpmCard');
+            const bpmDisplay = document.getElementById('bpmDisplay');
+            const heartIcon = document.getElementById('heartIcon');
+            const bpmStatus = document.getElementById('bpmStatus');
 
-      const mensajeTexto = extractMensajeTexto(payload);
-      if (mensajeTexto === null) {
-        console.warn("Mensaje ignorado: no es XML válido con <mensaje>.");
-        return;
-      }
+            // Remover clases anteriores
+            mainCard.classList.remove('danger-alert', 'warning-alert', 'normal-state');
+            heartIcon.classList.remove('blinking-alert');
+            
+            switch(status) {
+                case 'danger':
+                    mainCard.classList.add('danger-alert');
+                    heartIcon.classList.add('blinking-alert');
+                    bpmStatus.innerHTML = '<i class="material-icons left">dangerous</i>PELIGROSO';
+                    bpmStatus.className = 'chip red white-text';
+                    bpmStatus.style.display = 'inline-block';
+                    bpmDisplay.className = 'bpm-display black-text pulse-animation';
+                    break;
+                    
+                case 'warning':
+                    mainCard.classList.add('warning-alert');
+                    bpmStatus.innerHTML = '<i class="material-icons left">warning</i>ADVERTENCIA';
+                    bpmStatus.className = 'chip orange white-text';
+                    bpmStatus.style.display = 'inline-block';
+                    bpmDisplay.className = 'bpm-display black-text pulse-animation';
+                    break;
+                    
+                case 'normal':
+                    mainCard.classList.add('normal-state');
+                    bpmStatus.innerHTML = '<i class="material-icons left">check_circle</i>NORMAL';
+                    bpmStatus.className = 'chip green white-text';
+                    bpmStatus.style.display = 'inline-block';
+                    bpmDisplay.className = 'bpm-display black-text pulse-animation';
+                    break;
+            }
+        }
 
-      const lista = document.getElementById('lista-mensajes');
-      const item = document.createElement('li');
-      item.className = 'list-group-item';
-      item.textContent = `${new Date().toLocaleTimeString()} - ${mensajeTexto}`;
-      lista.appendChild(item);
-    }
-  </script>
+        // Mostrar alerta de emergencia
+        function showEmergencyAlert(bpm) {
+            const now = Date.now();
+            // Evitar spam de alertas (mínimo 30 segundos entre alertas)
+            if (now - lastEmergencyAlert < 30000) {
+                return;
+            }
+            
+            lastEmergencyAlert = now;
+            emergencyStartTime = now;
+            
+            // Actualizar contenido del modal
+            document.getElementById('emergencyBpm').textContent = `${bpm} BPM`;
+            
+            // Preparar mensaje por defecto
+            const defaultMessage = `EMERGENCIA MÉDICA DETECTADA
+Ritmo cardíaco: ${bpm} BPM
+Fecha: ${new Date().toLocaleString('es-ES')}
+Estado: ${bpm <= alertSettings.dangerLow ? 'BRADICARDIA SEVERA' : 'TAQUICARDIA SEVERA'}
+Requiere atención médica inmediata.`;
+            
+            document.getElementById('emergencyMessage').value = defaultMessage;
+            M.textareaAutoResize(document.getElementById('emergencyMessage'));
+            
+            // Mostrar modal
+            if (!emergencyModalInstance) {
+                emergencyModalInstance = M.Modal.getInstance(document.getElementById('emergencyModal'));
+            }
+            emergencyModalInstance.open();
+            
+            // Iniciar temporizador
+            startEmergencyTimer();
+            
+            // Sonido de alerta (si el navegador lo permite)
+            try {
+                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTmm4PW4eCYHL3nE8dyQQAoUXrPl6qtWFAlEm+Hvu3AfBzmY2+/DciEELYPR8deTRgwVY77n4qhRDwRGpN7ou3EfBjiR1+vFeCMEL4bS8dyRQQoUXLPl6axXFAlBmuHvvnAfBzmY2u7DciAELoXQ8daSRgwWY7/n4qhSEAFFot/ou3IfBjmS1uvGeCQEL4bS8d2QQAkUXLLk6qxXFAlBmuHvvnIjBzmY2+3EdyoGLoXO8diJNggZaLrtu19UEglMp+LwuGEbBTmT1/LNeCsGJXnI8N2QQQkUXLPm6rBjAAA=');
+                audio.play().catch(() => {});
+            } catch(e) {}
+            
+            // Toast de emergencia
+            M.toast({
+                html: `<i class="material-icons left">warning</i>¡EMERGENCIA! BPM: ${bpm}`,
+                classes: 'red',
+                displayLength: 10000
+            });
+        }
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+        // Iniciar temporizador de emergencia
+        function startEmergencyTimer() {
+            if (emergencyTimer) {
+                clearInterval(emergencyTimer);
+            }
+            
+            emergencyTimer = setInterval(() => {
+                if (emergencyStartTime) {
+                    const elapsed = Math.floor((Date.now() - emergencyStartTime) / 1000);
+                    document.getElementById('emergencyTimer').textContent = elapsed;
+                }
+            }, 1000);
+        }
+
+        // Enviar alerta de emergencia
+        function sendEmergencyAlert() {
+            const topic = document.getElementById('emergencyTopic').value || 'sensor/emergencia';
+            const customMessage = document.getElementById('emergencyMessage').value;
+            const bpm = document.getElementById('emergencyBpm').textContent;
+            
+            const emergencyData = {
+                tipo: 'emergencia_medica',
+                sensor: 'monitor_cardiaco',
+                ritmo_cardiaco: parseInt(bpm),
+                estado: parseInt(bpm) <= alertSettings.dangerLow ? 'bradicardia_severa' : 'taquicardia_severa',
+                mensaje: customMessage,
+                timestamp: Math.floor(Date.now() / 1000),
+                ubicacion: 'desconocida', // Se puede integrar con geolocalización
+                prioridad: 'critica'
+            };
+            
+            try {
+                const message = new Paho.MQTT.Message(JSON.stringify(emergencyData));
+                message.destinationName = topic;
+                message.qos = 2; // QoS más alto para emergencias
+                client.send(message);
+                
+                M.toast({
+                    html: `<i class="material-icons left">send</i>Alerta de emergencia enviada`,
+                    classes: 'green',
+                    displayLength: 5000
+                });
+                
+                // Cerrar modal
+                if (emergencyModalInstance) {
+                    emergencyModalInstance.close();
+                }
+                
+                // Limpiar temporizador
+                if (emergencyTimer) {
+                    clearInterval(emergencyTimer);
+                    emergencyTimer = null;
+                }
+                
+            } catch (error) {
+                console.error('Error enviando alerta de emergencia:', error);
+                M.toast({
+                    html: `<i class="material-icons left">error</i>Error enviando alerta`,
+                    classes: 'red'
+                });
+            }
+        }
+
+        // Guardar configuración de alertas
+        function saveSettings() {
+            alertSettings.dangerLow = parseInt(document.getElementById('dangerLow').value) || 50;
+            alertSettings.dangerHigh = parseInt(document.getElementById('dangerHigh').value) || 100;
+            alertSettings.warningLow = parseInt(document.getElementById('warningLow').value) || 60;
+            alertSettings.warningHigh = parseInt(document.getElementById('warningHigh').value) || 90;
+            
+            // Guardar en localStorage
+            localStorage.setItem('heartRateAlertSettings', JSON.stringify(alertSettings));
+            
+            M.toast({
+                html: '<i class="material-icons left">check</i>Configuración guardada',
+                classes: 'green'
+            });
+        }
+
+        // Cargar configuración guardada
+        function loadSettings() {
+            const saved = localStorage.getItem('heartRateAlertSettings');
+            if (saved) {
+                alertSettings = JSON.parse(saved);
+                document.getElementById('dangerLow').value = alertSettings.dangerLow;
+                document.getElementById('dangerHigh').value = alertSettings.dangerHigh;
+                document.getElementById('warningLow').value = alertSettings.warningLow;
+                document.getElementById('warningHigh').value = alertSettings.warningHigh;
+            }
+        }
+        // Actualizar UI con los datos recibidos
+        function updateUI(data) {
+            // Actualizar BPM principal
+            const bpmElement = document.getElementById('bpmDisplay');
+            bpmElement.textContent = data.ritmo_cardiaco;
+            bpmElement.classList.add('pulse-animation');
+            setTimeout(() => bpmElement.classList.remove('pulse-animation'), 600);
+        
+            // Actualizar información del sensor
+            document.getElementById('sensorName').textContent = data.sensor;
+            document.getElementById('sensorStatus').textContent = 'Activo';
+            document.getElementById('timestamp').textContent = formatTimestamp(data.timestamp);
+            document.getElementById('lastUpdate').textContent = 
+                `Última actualización: ${formatTimestamp(data.timestamp)}`;
+        
+            // Actualizar gráfico
+            const timeForChart = formatTimeForChart(data.timestamp);
+            updateChart(data.ritmo_cardiaco, timeForChart);
+        
+            // Actualizar estadísticas
+            updateStats();
+        
+            // Actualizar estado visual del BPM
+            const bpmStatus = getBpmStatus(data.ritmo_cardiaco);
+            updateBpmVisualState(bpmStatus, data.ritmo_cardiaco);
+        
+            // Mostrar alerta de emergencia si es necesario
+            if (bpmStatus === 'danger') {
+                showEmergencyAlert(data.ritmo_cardiaco);
+            }
+        }
+
+        // Configuración MQTT
+        const client = new Paho.MQTT.Client("localhost", 80, "clientId" + parseInt(Math.random() * 1000));
+
+        client.onConnectionLost = function(responseObject) {
+            if (responseObject.errorCode !== 0) {
+                console.log("Conexión perdida: " + responseObject.errorMessage);
+                document.getElementById('connectionStatus').innerHTML = 
+                    '<i class="material-icons left">wifi_off</i>Desconectado';
+                document.getElementById('connectionStatus').className = 'status-disconnected';
+                document.getElementById('sensorStatus').textContent = 'Inactivo';
+            }
+        };
+
+        client.onMessageArrived = function(message) {
+            console.log("Mensaje recibido: " + message.payloadString);
+            try {
+                const data = JSON.parse(message.payloadString);
+                if (data.sensor && data.ritmo_cardiaco && data.timestamp) {
+                    updateUI(data);
+                    M.toast({html: `Nuevo dato: ${data.ritmo_cardiaco} BPM`, classes: 'green'});
+                }
+            } catch (error) {
+                console.error("Error al parsear JSON:", error);
+                M.toast({html: 'Error al procesar datos', classes: 'red'});
+            }
+        };
+
+        function onConnect() {
+            console.log("Conectado al broker MQTT");
+            document.getElementById('connectionStatus').innerHTML = 
+                '<i class="material-icons left">wifi</i>Conectado';
+            document.getElementById('connectionStatus').className = 'status-connected';
+            
+            client.subscribe("sensor/datos");
+            M.toast({html: 'Conectado al broker MQTT', classes: 'green'});
+            
+            // Enviar mensaje de prueba
+            const message = new Paho.MQTT.Message("Cliente conectado");
+            message.destinationName = "sensor/datos";
+            client.send(message);
+        }
+
+        // Inicializar aplicación
+        document.addEventListener('DOMContentLoaded', function() {
+            // Inicializar Materialize
+            M.AutoInit();
+            
+            // Inicializar modales
+            const modals = document.querySelectorAll('.modal');
+            M.Modal.init(modals);
+            emergencyModalInstance = M.Modal.getInstance(document.getElementById('emergencyModal'));
+            
+            // Inicializar botón flotante
+            const actionButton = document.querySelectorAll('.fixed-action-btn');
+            M.FloatingActionButton.init(actionButton);
+            
+            // Cargar configuración guardada
+            loadSettings();
+            
+            // Inicializar gráfico
+            initChart();
+            
+            // Conectar MQTT
+            client.connect({onSuccess: onConnect});
+            
+            // Toast de bienvenida
+            M.toast({html: 'Monitor de ritmo cardíaco iniciado', classes: 'blue'});
+            
+            // Actualizar labels de Materialize
+            M.updateTextFields();
+        });
+    </script>
 </body>
 </html>

@@ -1,5 +1,10 @@
 FROM eclipse-mosquitto:latest
 
+RUN apk update && \
+    apk add --no-cache python3 py3-pip nano && \
+    ln -sf python3 /usr/bin/python && \
+    pip install --break-system-packages paho-mqtt
+
 COPY mosquitto.conf /mosquitto/config/mosquitto.conf
 
 EXPOSE 1883
