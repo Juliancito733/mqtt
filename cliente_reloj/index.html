@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Apple Watch MQTT UI</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+
+  <!-- Selector de dispositivos -->
+  <select id="dispositivoSelect">
+    <option value="">-- Selecciona un dispositivo --</option>
+  </select>
+  <div id="datosDispositivo">Esperando selección...</div>
+
+  <!-- Botones para cambiar vistas -->
+  <div class="button-container">
+    <button id="btnRitmo">Ver Ritmo Cardiaco</button>
+    <button id="btnMensajes">Ver Mensajes</button>
+  </div>
+
+  <!-- Reloj -->
+  <div class="wrapper">
+    <div class="watch">
+      <div class="strap strap-top">
+        <div class="mesh"></div>
+        <div class="mesh"></div>
+        <div class="mesh"></div>
+        <div class="mesh"></div>
+        <div class="mesh"></div>
+      </div>
+
+      <div class="case">
+        <div class="crown"></div>
+        <div class="power"></div>
+
+        <!-- Pantalla del reloj -->
+        <div class="screen">
+          
+          <!-- Vista: Ritmo Cardiaco -->
+          <div id="vistaRitmo">
+            <div class="metric">
+              <div class="label">Ritmo</div>
+              <div class="value" id="ritmoCardiaco">--</div>
+              <div class="unit">bpm</div>
+            </div>
+          </div>
+
+          <!-- Vista: Mensajes -->
+          <div id="vistaMensajes">
+            <div id="mensajesRecibidos"></div>
+            <textarea id="mensajeRespuesta" placeholder="Tu respuesta..."></textarea>
+            <button id="btnEnviarRespuesta">Enviar</button>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="strap strap-bottom">
+        <div class="mesh"></div>
+        <div class="mesh"></div>
+        <div class="mesh"></div>
+        <div class="mesh"></div>
+        <div class="mesh"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js"></script>
+  <script src="./script.js"></script>
+</body>
+</html>
