@@ -1,0 +1,49 @@
+.heart-rate-card {
+    margin-top: 20px;
+}
+.status-card {
+    margin-bottom: 20px;
+}
+/*.alert-card {
+    animation: pulse 2s infinite;
+}*/
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+.danger-zone {
+    color: #f44336 !important;
+    font-weight: bold;
+}
+.warning-zone {
+    color: #ff9800 !important;
+    font-weight: bold;
+}
+.normal-zone {
+    color: #4caf50 !important;
+    font-weight: bold;
+}
+.modal-content h4 {
+    color: #f44336;
+}
+.alert-history {
+    max-height: 300px;
+    overflow-y: auto;
+}
+.chart-container {
+    position: relative;
+    height: 400px;
+    margin: 20px 0;
+}
+.stats-container {
+    display: flex;
+    justify-content: space-around;
+    margin: 20px 0;
+}
+.stat-card {
+    text-align: center;
+    padding: 15px;
+    margin: 5px;
+    border-radius: 8px;
+}
