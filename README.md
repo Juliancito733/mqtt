@@ -28,10 +28,15 @@ De forma resumida, tiene todo lo necesario para levantar el proyecto:
 
 ### 2. Creación del contenedor
 
-Una vez tengamos la imagen, crearemos el respectivo contenedor con el siguiente comando:
+Una vez tengamos la imagen, crearemos el respectivo contenedor con el siguiente comando para Windows con PowerShell:
 
 ```bash
 docker run -it -p 1883:1883 -p 80:9001 -v ${PWD}/simulador_reloj.py:/app/simulador_reloj.py mosquitto:python
+```
+Por el contrario, para sistemas Linux/MacOS o Git Bash:
+
+```bash
+docker run -it -p 1883:1883 -p 80:9001 -v "$PWD/simulador_reloj.py":/app/simulador_reloj.py mosquitto:python
 ```
 
 Lo que hacemos es montar el archivo de Python en la carpeta `app/` además de exponer los puertos necesarios para la ejecución del proyecto.
