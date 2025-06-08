@@ -77,6 +77,7 @@ client.onMessageArrived = function(message) {
         const payload = JSON.parse(message.payloadString);
         const partes = topic.split("/");
         const dispositivo = partes[1];
+        const tipoTopic = partes[2]; // 'ritmo_cardiaco' o 'mensajes'
 
         // Registrar el dispositivo si es nuevo
         if (!dispositivos.has(dispositivo)) {
@@ -84,15 +85,23 @@ client.onMessageArrived = function(message) {
             agregarDispositivoAlSelect(dispositivo);
         }
 
-        // Procesar los datos solo si corresponden al dispositivo seleccionado
-        if (dispositivoSeleccionado && dispositivo === dispositivoSeleccionado) {
-            const evaluacion = evaluarRitmoCardiaco(payload.ritmo_cardiaco);
-            actualizarTabla(dispositivo, payload.ritmo_cardiaco, payload.timestamp, evaluacion);
-            updateCharts(payload.ritmo_cardiaco, evaluacion);
-            
-            // Mostrar alerta si el ritmo cardíaco es peligroso
-            if (evaluacion.peligroso) {
-                mostrarAlerta(dispositivo, payload.ritmo_cardiaco, evaluacion);
+        // Procesar según el tipo de tópico
+        if (tipoTopic === 'ritmo_cardiaco') {
+            // Procesar los datos de ritmo cardíaco (código existente)
+            if (dispositivoSeleccionado && dispositivo === dispositivoSeleccionado) {
+                const evaluacion = evaluarRitmoCardiaco(payload.ritmo_cardiaco);
+                actualizarTabla(dispositivo, payload.ritmo_cardiaco, payload.timestamp, evaluacion);
+                updateCharts(payload.ritmo_cardiaco, evaluacion);
+                
+                // Mostrar alerta si el ritmo cardíaco es peligroso
+                if (evaluacion.peligroso) {
+                    mostrarAlerta(dispositivo, payload.ritmo_cardiaco, evaluacion);
+                }
+            }
+        } else if (tipoTopic === 'mensajes') {
+            // Procesar mensajes recibidos (nuevo)
+            if (dispositivoSeleccionado && dispositivo === dispositivoSeleccionado) {
+                mostrarMensajeRecibido(dispositivo, payload);
             }
         }
     } catch (err) {
@@ -614,11 +623,19 @@ document.getElementById("dispositivoSelect").addEventListener("change", function
     if (nuevoDispositivo) {
         const nuevoTopic = `dispositivos/${nuevoDispositivo}/ritmo_cardiaco`;
         cambiarSuscripcion(nuevoTopic);
+        
+        // Suscribirse también a mensajes del dispositivo
+        suscribirMensajes(nuevoDispositivo);
+        
         dispositivoSeleccionado = nuevoDispositivo;
         document.getElementById("datosContainer").style.display = "block";
         
         // Resetear estadísticas y gráficos al cambiar dispositivo
         resetStats();
+        
+        // Limpiar mensajes anteriores
+        mensajesRecibidos = [];
+        actualizarVisualizadorMensajes();
         
         const tbody = document.getElementById("tablaDatos");
         tbody.innerHTML = `<tr><td colspan="5">Esperando datos de ${nuevoDispositivo}...</td></tr>`;
@@ -629,8 +646,17 @@ document.getElementById("dispositivoSelect").addEventListener("change", function
         }
     } else {
         cambiarSuscripcion(wildcardTopic);
+        
+        // Desuscribirse de mensajes
+        if (topicMensajes) {
+            client.unsubscribe(topicMensajes);
+            topicMensajes = null;
+        }
+        
         dispositivoSeleccionado = "";
         document.getElementById("datosContainer").style.display = "none";
+        mensajesRecibidos = [];
+        actualizarVisualizadorMensajes();
     }
 });
 
@@ -659,3 +685,92 @@ client.connect({
         updateStatus("Error de conexión", 'error');
     }
 });
+
+// ============================================================================
+// VISUALIZADOR DE MENSAJES - AGREGAR AL FINAL DE script.js
+// ============================================================================
+
+// Variable para almacenar mensajes recibidos
+let mensajesRecibidos = [];
+let topicMensajes = null;
+
+/**
+ * Suscribirse al tópico de mensajes del dispositivo seleccionado
+ * @param {string} dispositivo - Nombre del dispositivo
+ */
+function suscribirMensajes(dispositivo) {
+    // Desuscribirse del tópico anterior si existe
+    if (topicMensajes) {
+        client.unsubscribe(topicMensajes);
+    }
+    
+    // Suscribirse al nuevo tópico de mensajes
+    topicMensajes = `dispositivos/${dispositivo}/mensajes`;
+    client.subscribe(topicMensajes);
+    console.log(`Suscrito a mensajes: ${topicMensajes}`);
+}
+
+/**
+ * Mostrar mensaje recibido en el visualizador
+ * @param {string} dispositivo - Nombre del dispositivo
+ * @param {object} mensaje - Objeto con el mensaje recibido
+ */
+function mostrarMensajeRecibido(dispositivo, mensaje) {
+    const mensajeData = {
+        dispositivo: dispositivo,
+        contenido: mensaje.mensaje || mensaje.contenido || JSON.stringify(mensaje),
+        tipo: mensaje.tipo || 'info',
+        timestamp: new Date().toLocaleString()
+    };
+    
+    mensajesRecibidos.unshift(mensajeData);
+    
+    // Limitar a 20 mensajes máximo
+    if (mensajesRecibidos.length > 20) {
+        mensajesRecibidos = mensajesRecibidos.slice(0, 20);
+    }
+    
+    actualizarVisualizadorMensajes();
+    
+    // Mostrar toast de notificación
+    showToast(`Mensaje de ${dispositivo}: ${mensajeData.contenido.substring(0, 50)}...`, 'info');
+}
+
+/**
+ * Actualizar el contenido del visualizador de mensajes
+ */
+function actualizarVisualizadorMensajes() {
+    const container = document.getElementById('mensajesContainer');
+    
+    if (mensajesRecibidos.length === 0) {
+        container.innerHTML = '<p class="grey-text">No hay mensajes recibidos</p>';
+        return;
+    }
+    
+    let html = '';
+    mensajesRecibidos.forEach(mensaje => {
+        const iconColor = mensaje.tipo === 'error' ? 'red-text' : 
+                         mensaje.tipo === 'warning' ? 'orange-text' : 'blue-text';
+        const icon = mensaje.tipo === 'error' ? 'error' : 
+                    mensaje.tipo === 'warning' ? 'warning' : 'message';
+        
+        html += `
+            <div class="card-panel ${mensaje.tipo === 'error' ? 'red lighten-4' : 
+                                   mensaje.tipo === 'warning' ? 'orange lighten-4' : 
+                                   'blue lighten-5'}" style="margin: 5px 0;">
+                <div class="row valign-wrapper" style="margin: 0;">
+                    <div class="col s1">
+                        <i class="material-icons ${iconColor}">${icon}</i>
+                    </div>
+                    <div class="col s11">
+                        <p style="margin: 0;"><strong>${mensaje.dispositivo}</strong></p>
+                        <p style="margin: 0; font-size: 0.9em;">${mensaje.contenido}</p>
+                        <p style="margin: 0; font-size: 0.8em; color: #666;">${mensaje.timestamp}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
