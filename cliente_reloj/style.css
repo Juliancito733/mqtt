@@ -294,19 +294,40 @@ input[type="range"]::-webkit-slider-thumb:before {
   font-size: 2.5em;
 }
 
-/* Estilo para el selector de dispositivos */
+/* Selector de dispositivos */
 #dispositivoSelect {
-  margin: 1em auto;
+  margin: 1.5em auto 0.5em auto;
   display: block;
   width: 80%;
+  max-width: 400px;
+  padding: 0.6em 1em;
+  border: 2px solid #007BFF;
+  border-radius: 8px;
+  font-size: 1em;
+  background-color: #f9f9f9;
+  color: #333;
+  transition: border-color 0.3s ease;
+}
+
+#dispositivoSelect:focus {
+  border-color: #0056b3;
+  outline: none;
 }
 
 /* Texto informativo debajo del selector */
-#datosDispositivo {
+/* #datosDispositivo {
+  width: fit-content;
+  margin: 1em auto;
+  padding: 0.6em 1.2em;
+  background-color: #fff3cd;
+  border: 1px solid #ffeeba;
+  color: #856404;
+  border-radius: 6px;
+  font-size: 0.95em;
+  font-weight: 500;
   text-align: center;
-  color: #ccc;
-  margin-bottom: 0.5em;
-}
+} */
+
 
 /* Contenedor de botones */
 .button-container {
@@ -316,15 +337,26 @@ input[type="range"]::-webkit-slider-thumb:before {
 
 /* Botones de vista */
 .button-container button {
-  padding: 0.5em 1em;
-  font-weight: bold;
-  margin-right: 1em;
+  padding: 0.6em 1.2em;
+  font-weight: 600;
+  font-size: 1em;
+  margin: 0 0.5em;
+  border: none;
+  border-radius: 6px;
+  background-color: #007BFF;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
-.button-container button:last-child {
-  margin-right: 0;
+.button-container button:hover {
+  background-color: #0056b3;
+  transform: scale(1.05);
 }
 
+.button-container button:active {
+  transform: scale(0.98);
+}
 /* Estilo de la pantalla del reloj */
 .screen {
   color: white;
