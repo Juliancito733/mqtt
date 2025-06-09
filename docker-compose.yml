@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  mosquitto:
+    build:
+      context: .
+      dockerfile: Dockerfile.mosquitto
+    container_name: mosquitto
+    ports:
+      - "1883:1883"
+      - "80:9001"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./simulador_reloj.py:/app/simulador_reloj.py
+    networks:
+      - mqtt_network
+
+  mysql:
+    image: mysql:latest
+    container_name: mysql_db
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password_seguro
+      MYSQL_DATABASE: basedatos_api
+      MYSQL_USER: usuario_api
+      MYSQL_PASSWORD: password_usuario_api
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3307:3306"
+    networks:
+      - mqtt_network
+
+  api_php:
+    build:
+      context: .
+      dockerfile: Dockerfile.php
+    container_name: api_php
+    working_dir: /var/www/html
+    volumes:
+      - ./API_RitmoCardiaco:/var/www/html
+    command: php -S 0.0.0.0:5000 -t /var/www/html
+    ports:
+      - "5000:5000"
+    networks:
+      - mqtt_network
+
+volumes:
+  mysql_data:
+
+networks:
+  mqtt_network:
+    driver: bridge
