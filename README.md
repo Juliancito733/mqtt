@@ -1,118 +1,125 @@
-# Proyecto Tecnologías Web
+# Proyecto Tecnologías Web - Ritmo Cardíaco
 
 ## Instrucciones
 
-### 1. Construcción de la imagen Docker
+### 1. Construcción de imágenes y contenedores
 
 - Ubícate en la raíz de la carpeta que clonaste.
-- El archivo que nos interesa en este momento es el `Dockerfile`. Para construir la imagen necesitas ejecutar el siguiente comando con PowerShell:
+- El archivo que nos interesa en este momento es el `docker-compose.yml`. Para poder orquestar los múltiples contenedores como un solo servicio ejecutaremos el siguiente comando en PowerShell:
 
 ```bash
-docker build -t mosquitto:python .
+docker-compose up -d
 ```
 
-Esto creará la imagen `mosquitto:python`. Lo puedes comprobar con el siguiente comando:
+### 2. Ejecución del simulador
 
-```bash
-docker images
-```
+Gracias al `docker-compose.yml` ya no es necesario montar de forma manual el script de Python ni los puertos a utilizar, por lo que solo nos interesará en este momento ingresar al contenedor específico con MQTT y Python, para ello haremos los siguientes pasos:
 
-### ¿Qué tiene la imagen?
+1. Visualizar los contenedores, con el siguiente comando:
+   ```bash
+   docker ps -a
+   ```
 
-De forma resumida, tiene todo lo necesario para levantar el proyecto:
+2. El `docker-compose.yml` crea 3 contenedores, el que nos interesa es el que tiene el nombre de `proyecto-mosquitto`, ingresaremos a él mediante el siguiente comando:
+   ```bash
+   docker exec -it id_contenedor sh
+   ```
 
-- Python
-- Pip
-- Paho para Python
-- Editor nano para mayor comodidad para editar archivos rápidamente
+3. Una vez dentro, iremos a la carpeta `app` mediante:
+   ```bash
+   cd app
+   ```
 
-### 2. Creación del contenedor
+4. Encontremos el script de python, lo podemos comprobar con el comando:
+   ```bash
+   ls
+   ```
 
-Una vez tengamos la imagen, crearemos el respectivo contenedor con el siguiente comando para Windows con PowerShell:
+5. Para ejecutar el simulador, primero tendremos que pasarle un argumento. En este caso, nos servirá para poder identificar cada ejecución de script y asignarle un nombre al reloj de simulación. Lo ejecutaremos de la siguiente manera:
+   ```bash
+   python simulador_reloj.py nombre_del_reloj
+   ```
 
-```bash
-docker run -it -p 1883:1883 -p 80:9001 -v ${PWD}/simulador_reloj.py:/app/simulador_reloj.py mosquitto:python
-```
-Por el contrario, para sistemas Linux/MacOS o Git Bash:
+   `nombre_del_reloj` es el argumento específico, así que puedes ponerle el nombre que tú quieras como:
+   - `reloj1`
+   - `apple_watch`
+   - `galaxy_watch6`
 
-```bash
-docker run -it -p 1883:1883 -p 80:9001 -v "$PWD/simulador_reloj.py":/app/simulador_reloj.py mosquitto:python
-```
+Para poder tener n número de relojes, podemos repetir desde el paso 2 de la instrucción 2 con un nombre diferente de reloj.
 
-Lo que hacemos es montar el archivo de Python en la carpeta `app/` además de exponer los puertos necesarios para la ejecución del proyecto.
+### 3. Visualizar datos
 
-### 3. Acceso al contenedor
+Verás que el script empieza a mostrar información en formato JSON en la terminal. La cual está siendo enviada a dos puntos importantes al broker para que puedan visualizarla aquellos que estén suscritos y a una API con el método POST para poder ser almacenada en una base de datos.
 
-Como el broker se ejecuta apenas se realiza el contenedor, recuerda que puedes acceder a él en otra terminal mediante los comandos:
+En nuestro caso, tenemos 2 clientes web que están suscritos al topic, para visualizarlo, simplemente iremos a las carpetas `cliente_dashboard`, `cliente_reloj` y abrir sus respectivos `index.html` y se empezará a mostrar la información una vez hayas seleccionado un dispositivo de la lista.
 
-```bash
-docker ps -a
-```
-Nos servirá para saber el ID específico del contenedor que se acaba de crear.
+Para el consumo de la API y mostrar los datos almacenados ingresaremos a la carpeta `cliente_api`, y abriremos su correspondiente `index.html`, la cual ya estará consumiendo la API.
 
-```bash
-docker exec -it id_contenedor sh
-```
-Permitirá acceder nuevamente al contenedor.
+## Funcionamiento Interno
 
-### 4. Navegación dentro del contenedor
+### ¿Cómo funciona?
 
-Una vez dentro, podremos visualizar los archivos mediante el comando:
+Ante la complejidad de orquestar múltiples elementos, se optó por usar un `docker-compose` ya que permite definir y gestionar múltiples contenedores Docker como un solo servicio, en nuestro caso contamos con 3 los cuales cumplen las siguientes funciones:
 
-```bash
-ls
-```
+- **Mosquitto con Python**: Ejecuta el Simulador del reloj y la información la envía a los topics con Mosquitto.
+- **MySQL**: Para almacenar la información generada por el simulador del reloj en una base de datos mediante la API.
+- **PHP con mysqli**: Utilizado para levantar un servicio web y así poder acceder a la API y hacer las consultas establecidas internas de la API.
 
-Encontraremos la carpeta montada `app/`, accederemos a ella mediante:
+La división de responsabilidades es de suma importancia, realizar lo anterior con un solo contenedor habría dificultado su gestionamiento, ya que al fallar algo todos los demás también se verían afectados.
 
-```bash
-cd app
-```
+Es importante aclarar que el `docker-compose.yml` ocupa Dockerfiles (`dockerfile.php`, `dockerfile.mosquitto`) que personalizamos para poder tener todo el stack tecnológico necesario para su funcionamiento dentro de contenedores, no es necesario ejecutar cada dockerfile de forma individual, esto ya lo hace automáticamente el `docker-compose.yml`.
 
-Podremos encontrar el archivo de Python `simulador_reloj.py`.
+De forma resumida hace lo siguiente:
 
-### 5. Ejecución del simulador
+#### Servicios:
 
-Al ejecutar el script tendremos que pasarle el argumento. En este caso nos servirá para poder identificar cada ejecución de script y asignarle un nombre al reloj de simulación, así que tendrás que ejecutarlo de la siguiente manera:
+**mosquitto**
+Broker MQTT basado en Eclipse Mosquitto, con configuración personalizada y un script Python que simula un reloj inteligente publicando ritmo cardíaco.
 
-```bash
-python simulador_reloj.py nombre_del_reloj
-```
+**mysql_db**
+Base de datos MySQL que almacena los datos de la API. Se inicializa con un script SQL (`init.sql`) y mantiene persistencia con un volumen.
 
-`nombre_del_reloj` es el argumento, así que puedes ponerle el que tú quieras como:
-- `reloj1`
-- `apple_watch`
-- `galaxy_watch`
+**api_php**
+Servidor PHP que ejecuta una API REST (ubicada en `API_RitmoCardiaco`) en el puerto 5000, conectándose a la base de datos.
 
-> **Importante**: No pongas espacios en el nombre del reloj. Es necesario que recuerdes el nombre del reloj.
+#### Red y Volúmenes:
 
-### 6. Múltiples relojes
+Todos los servicios comparten una red interna `mqtt_network` para comunicarse entre sí por nombre de contenedor.
 
-Puedes repetir el paso desde `docker exec` para poder tener n número de relojes.
+Se utiliza el volumen `mysql_data` para conservar los datos de MySQL.
 
-### 7. Visualización
+## Estructura de carpetas
 
-Verás que empieza a mostrar información en formato JSON en la terminal. Para poder ver los clientes web, lo único que tienes que hacer es abrir el `index` de la carpeta `cliente_dashboard` para visualizar la información y las alertas. Ya está configurado con los puertos necesarios para websockets.
+Nos encontraremos con 4 carpetas diferentes cada una con diferentes responsabilidades:
 
-De igual forma, en la carpeta `cliente_reloj` podrás encontrar la interfaz para poder visualizar los mensajes de alerta que se envían desde el dashboard.
+- **API_RitmoCardiaco**: Contiene toda la lógica de la API, además de un archivo `index.html` en la raíz para pruebas con los métodos POST y GET.
 
-## Estructura de tópicos
+- **cliente_api**: Contiene toda la lógica y la interfaz de un cliente web que consume la API mediante el endpoint `http://localhost:5000/api/ritmo` con el método GET.
 
-Es importante tener en cuenta que los tópicos creados son **dinámicos**, es decir, dependerán totalmente del nombre del dispositivo que hayas asignado.
+  Opcionalmente, podemos ocupar Postman o CURL para consultar a la API desde el host, ya que hacemos un mapeo del puerto 5000:5000 del host y del contenedor de php con mysqli haciendo lo anterior posible:
+  
+  **CURL:**
+  ```bash
+  curl http://localhost:5000/api/ritmo
+  ```
+  
+  **POSTMAN:**
+  - Método: GET
+  - Endpoint: `http://localhost:5000/api/ritmo`
 
-### Ejemplos:
+  Obtendremos una respuesta en JSON con el siguiente formato:
+  ```json
+  {
+      "id": 43,
+      "dispositivo": "apple_watch",
+      "ritmo": {
+          "valor": 119,
+          "unidad": "bpm"
+      },
+      "timestamp": 1749494290
+  }
+  ```
 
-Al ejecutar el Python genera el topic:
-```
-dispositivos/{dispositivo}/ritmo_cardiaco
-```
+- **cliente_dashboard**: Contiene toda la lógica y la interfaz para ver en tiempo real los datos generados por el simulador reloj, utilizando websockets.
 
-El dashboard enviará las alertas a:
-```
-dispositivos/{dispositivo}/alertas
-```
-
-El reloj podrá responderlas a:
-```
-dispositivos/{dispositivo}/mensajes
-```
+- **cliente_reloj**: Contiene toda la lógica y la interfaz para poder visualizar el ritmo cardíaco de un reloj específico y las alertas enviadas desde el `cliente_dashboard`, además de poder responder a estas mismas.
