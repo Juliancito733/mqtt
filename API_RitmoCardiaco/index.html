@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Prueba API Ritmo Cardíaco</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; max-width: 600px; }
+    input, button { padding: 8px; margin: 5px 0; width: 100%; box-sizing: border-box; }
+    #listaRitmos { margin-top: 20px; }
+    .ritmoItem { border-bottom: 1px solid #ccc; padding: 10px 0; }
+    label { font-weight: bold; margin-top: 10px; display: block; }
+  </style>
+</head>
+<body>
+  <h1>API Ritmo Cardíaco - Prueba</h1>
+
+  <section>
+    <h2>Enviar nuevo ritmo cardíaco</h2>
+    <form id="formRitmo">
+      <label for="relojId">ID del reloj</label>
+      <input type="text" id="relojId" name="relojId" required value="reloj1" />
+
+      <label for="ritmo">Ritmo cardíaco (bpm)</label>
+      <input type="number" id="ritmo" name="ritmo" required min="0" value="119" />
+
+      <label for="unidad">Unidad</label>
+      <input type="text" id="unidad" name="unidad" required value="bpm" />
+
+      <label for="timestamp">Timestamp (segundos)</label>
+      <input type="number" id="timestamp" name="timestamp" required value="" />
+
+      <button type="submit">Enviar ritmo</button>
+    </form>
+    <div id="resultadoPost"></div>
+  </section>
+
+  <section>
+    <h2>Lista de ritmos cardíacos</h2>
+    <button id="btnCargar">Cargar datos</button>
+    <div id="listaRitmos"></div>
+  </section>
+
+  <script>
+    const apiUrl = 'http://localhost:5000/api/ritmo';
+
+    // Set default timestamp a ahora en segundos
+    document.getElementById('timestamp').value = Math.floor(Date.now() / 1000);
+
+    // Manejar el envío del formulario (POST)
+    document.getElementById('formRitmo').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const data = {
+        dispositivo: document.getElementById('relojId').value,
+        ritmo_cardiaco: parseInt(document.getElementById('ritmo').value, 10),
+        unidad: document.getElementById('unidad').value,
+        timestamp: parseInt(document.getElementById('timestamp').value, 10)
+      };
+
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        document.getElementById('resultadoPost').textContent = JSON.stringify(result, null, 2);
+      } catch (error) {
+        document.getElementById('resultadoPost').textContent = 'Error: ' + error.message;
+      }
+    });
+
+    // Cargar y mostrar datos (GET)
+    document.getElementById('btnCargar').addEventListener('click', async () => {
+    try {
+        const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+        });
+        const datos = await response.json();
+
+        const lista = document.getElementById('listaRitmos');
+        lista.innerHTML = '';
+
+        if (Array.isArray(datos) && datos.length > 0) {
+        datos.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'ritmoItem';
+            div.textContent = `Dispositivo: ${item.dispositivo} | Ritmo: ${item.ritmo.valor} ${item.ritmo.unidad} | Timestamp: ${item.timestamp}`;
+            lista.appendChild(div);
+        });
+        } else {
+        lista.textContent = 'No hay datos para mostrar.';
+        }
+    } catch (error) {
+        document.getElementById('listaRitmos').textContent = 'Error al cargar datos: ' + error.message;
+    }
+    });
+
+  </script>
+</body>
+</html>
