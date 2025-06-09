@@ -10,6 +10,10 @@
 ```bash
 docker-compose up -d
 ```
+Para detener los contenedores haremos uso del siguiente comando:
+```bash
+docker-compose down
+```
 
 ### 2. Ejecución del simulador
 
