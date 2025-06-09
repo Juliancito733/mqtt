@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Ritmo Cardíaco</title>
+    <!-- Materialize CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <!-- Estilos personalizados -->
+    <link rel="stylesheet" href="styles.css">
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav class="blue lighten-1">
+    <div class="nav-wrapper container">
+      <a href="#" class="brand-logo">Ritmo Cardíaco</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- Sección: Resumen General -->
+    <div class="section" id="resumen-section">
+      <div class="card-panel">
+        <h5><i class="material-icons left">insights</i>Resumen General</h5>
+        <div class="row" id="resumen-cards">
+          <!-- Tarjetas dinámicas -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Sección: Datos por Dispositivo -->
+    <div class="section" id="dispositivos-section">
+      <div class="card-panel">
+        <h5><i class="material-icons left">devices</i>Datos por Dispositivo</h5>
+        <div class="row">
+          <div class="col s12 m6" id="dispositivos-lista">
+            <!-- Lista de dispositivos -->
+          </div>
+          <div class="col s12 m6">
+            <canvas id="dispositivos-chart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sección: Evolución Temporal -->
+    <div class="section" id="cronologia-section">
+      <div class="card-panel">
+        <h5><i class="material-icons left">timeline</i>Evolución Temporal</h5>
+        <div class="row">
+          <div class="col s12">
+            <canvas id="cronologia-chart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sección: Tabla de Registros -->
+    <div class="section" id="registros-section">
+      <div class="card-panel">
+        <h5><i class="material-icons left">table_chart</i>Registros</h5>
+
+        <div class="row">
+          <div class="col s12 m6 offset-m6">
+            <div class="input-field">
+              <select id="orden-select">
+                <option value="timestamp-desc">Más recientes primero</option>
+                <option value="timestamp-asc">Más antiguos primero</option>
+                <option value="valor-desc">Ritmo (alto a bajo)</option>
+                <option value="valor-asc">Ritmo (bajo a alto)</option>
+              </select>
+              <label>Ordenar por:</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col s12">
+            <table class="highlight responsive-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Dispositivo</th>
+                  <th>Ritmo Cardíaco</th>
+                  <th>Fecha/Hora</th>
+                </tr>
+              </thead>
+              <tbody id="registros-tbody">
+                <!-- Carga dinámica -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+    <!-- Materialize JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

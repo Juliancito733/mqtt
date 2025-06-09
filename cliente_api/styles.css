@@ -1,0 +1,14 @@
+.card-panel.warning {
+    background-color: #fff3e0;
+}
+.card-panel.danger {
+    background-color: #ffebee;
+}
+.anomaly-high {
+    color: #d32f2f;
+    font-weight: bold;
+}
+.anomaly-low {
+    color: #1976d2;
+    font-weight: bold;
+}
