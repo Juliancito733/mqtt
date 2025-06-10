@@ -217,11 +217,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Función para preparar gráfico cronológico con líneas independientes por dispositivo
+    // MODIFICADA: Mostrar solo los registros más recientes
     function prepareTimeChart(registros) {
-        // Agrupar registros por dispositivo
+        // Ordenar por timestamp descendente y tomar solo los más recientes
+        const LIMITE_REGISTROS = 15; // Puedes ajustar este número según necesites
+        const registrosRecientes = registros
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .slice(0, LIMITE_REGISTROS)
+            .reverse(); // Revertir para mostrar cronológicamente (más antiguo a más reciente)
+        
+        // Agrupar registros recientes por dispositivo
         const dispositivosMap = {};
         
-        registros.forEach(registro => {
+        registrosRecientes.forEach(registro => {
             if (!dispositivosMap[registro.dispositivo]) {
                 dispositivosMap[registro.dispositivo] = {
                     timestamps: [],
@@ -246,8 +254,8 @@ document.addEventListener('DOMContentLoaded', function() {
             'rgba(201, 203, 207, 1)'     // Gris
         ];
         
-        // Obtener todos los timestamps únicos y ordenados
-        const allTimestamps = [...new Set(registros.map(r => r.timestamp))].sort((a, b) => a - b);
+        // Obtener todos los timestamps únicos y ordenados de los registros recientes
+        const allTimestamps = [...new Set(registrosRecientes.map(r => r.timestamp))].sort((a, b) => a - b);
         const allLabels = allTimestamps.map(ts => formatTimestamp(ts));
         
         // Crear datasets para cada dispositivo
@@ -303,20 +311,20 @@ document.addEventListener('DOMContentLoaded', function() {
                             display: true,
                             text: 'Ritmo (bpm)'
                         },
-                        suggestedMin: Math.max(40, Math.min(...registros.map(r => r.ritmo.valor)) - 10),
-                        suggestedMax: Math.max(...registros.map(r => r.ritmo.valor)) + 10
+                        suggestedMin: Math.max(40, Math.min(...registrosRecientes.map(r => r.ritmo.valor)) - 10),
+                        suggestedMax: Math.max(...registrosRecientes.map(r => r.ritmo.valor)) + 10
                     },
                     x: {
                         title: {
                             display: true,
-                            text: 'Fecha/Hora'
+                            text: 'Fecha/Hora (Últimos ' + LIMITE_REGISTROS + ' registros)'
                         },
                         ticks: {
                             maxRotation: 45,
                             minRotation: 45,
                             callback: function(value, index, values) {
-                                // Mostrar solo algunas etiquetas para evitar saturación
-                                if (values.length > 15 && index % Math.ceil(values.length / 10) !== 0) {
+                                // Con menos registros, podemos mostrar más etiquetas
+                                if (values.length > 8 && index % Math.ceil(values.length / 6) !== 0) {
                                     return '';
                                 }
                                 return allLabels[index];
@@ -336,7 +344,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             afterLabel: function(context) {
                                 const dispositivo = context.dataset.label;
                                 const timestamp = allTimestamps[context.dataIndex];
-                                const registro = registros.find(r => 
+                                const registro = registrosRecientes.find(r => 
                                     r.dispositivo === dispositivo && r.timestamp === timestamp
                                 );
                                 
