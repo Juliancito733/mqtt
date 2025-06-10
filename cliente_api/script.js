@@ -217,300 +217,300 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Variable global para almacenar todos los registros
-let todosLosRegistros = [];
+    let todosLosRegistros = [];
 
-// Función para crear el selector de dispositivos
-function createDeviceSelector(registros) {
-    // Obtener dispositivos únicos
-    const dispositivosUnicos = [...new Set(registros.map(r => r.dispositivo))];
-    
-    // Buscar si ya existe el selector, si no, crearlo
-    let selectorContainer = document.getElementById('device-selector-container');
-    if (!selectorContainer) {
-        // Crear el contenedor del selector
-        const cronologiaSection = document.getElementById('cronologia-section');
-        const cardPanel = cronologiaSection.querySelector('.card-panel');
-        const title = cardPanel.querySelector('h5');
+    // Función para crear el selector de dispositivos
+    function createDeviceSelector(registros) {
+        // Obtener dispositivos únicos
+        const dispositivosUnicos = [...new Set(registros.map(r => r.dispositivo))];
         
-        selectorContainer = document.createElement('div');
-        selectorContainer.id = 'device-selector-container';
-        selectorContainer.className = 'row';
-        selectorContainer.innerHTML = `
-            <div class="col s12 m6">
-                <div class="input-field">
-                    <select id="device-select">
-                        <option value="todos">Todos los dispositivos</option>
-                    </select>
-                    <label>Mostrar dispositivo:</label>
+        // Buscar si ya existe el selector, si no, crearlo
+        let selectorContainer = document.getElementById('device-selector-container');
+        if (!selectorContainer) {
+            // Crear el contenedor del selector
+            const cronologiaSection = document.getElementById('cronologia-section');
+            const cardPanel = cronologiaSection.querySelector('.card-panel');
+            const title = cardPanel.querySelector('h5');
+            
+            selectorContainer = document.createElement('div');
+            selectorContainer.id = 'device-selector-container';
+            selectorContainer.className = 'row';
+            selectorContainer.innerHTML = `
+                <div class="col s12 m6">
+                    <div class="input-field">
+                        <select id="device-select">
+                            <option value="todos">Todos los dispositivos</option>
+                        </select>
+                        <label>Mostrar dispositivo:</label>
+                    </div>
                 </div>
-            </div>
-        `;
-        
-        // Insertar después del título
-        title.parentNode.insertBefore(selectorContainer, title.nextSibling);
-    }
-    
-    // Actualizar opciones del selector
-    const deviceSelect = document.getElementById('device-select');
-    const currentValue = deviceSelect.value; // Preservar selección actual
-    
-    deviceSelect.innerHTML = '<option value="todos">Todos los dispositivos</option>';
-    
-    dispositivosUnicos.forEach(dispositivo => {
-        const option = document.createElement('option');
-        option.value = dispositivo;
-        option.textContent = dispositivo;
-        if (dispositivo === currentValue) {
-            option.selected = true;
+            `;
+            
+            // Insertar después del título
+            title.parentNode.insertBefore(selectorContainer, title.nextSibling);
         }
-        deviceSelect.appendChild(option);
-    });
-    
-    // Reinicializar el selector de Materialize
-    M.FormSelect.init(deviceSelect);
-    
-    // Agregar event listener si no existe
-    if (!deviceSelect.hasAttribute('data-listener-added')) {
-        deviceSelect.addEventListener('change', function() {
-            const selectedDevice = this.value;
-            updateChartForDevice(selectedDevice, todosLosRegistros);
+        
+        // Actualizar opciones del selector
+        const deviceSelect = document.getElementById('device-select');
+        const currentValue = deviceSelect.value; // Preservar selección actual
+        
+        deviceSelect.innerHTML = '<option value="todos">Todos los dispositivos</option>';
+        
+        dispositivosUnicos.forEach(dispositivo => {
+            const option = document.createElement('option');
+            option.value = dispositivo;
+            option.textContent = dispositivo;
+            if (dispositivo === currentValue) {
+                option.selected = true;
+            }
+            deviceSelect.appendChild(option);
         });
-        deviceSelect.setAttribute('data-listener-added', 'true');
+        
+        // Reinicializar el selector de Materialize
+        M.FormSelect.init(deviceSelect);
+        
+        // Agregar event listener si no existe
+        if (!deviceSelect.hasAttribute('data-listener-added')) {
+            deviceSelect.addEventListener('change', function() {
+                const selectedDevice = this.value;
+                updateChartForDevice(selectedDevice, todosLosRegistros);
+            });
+            deviceSelect.setAttribute('data-listener-added', 'true');
+        }
     }
-}
 
-// Función para actualizar la gráfica según el dispositivo seleccionado
-function updateChartForDevice(selectedDevice, registros) {
-    const LIMITE_REGISTROS = 15;
-    
-    // Filtrar registros por dispositivo si no es "todos"
-    let registrosFiltrados = registros;
-    if (selectedDevice !== 'todos') {
-        registrosFiltrados = registros.filter(r => r.dispositivo === selectedDevice);
-    }
-    
-    // Ordenar por timestamp descendente y tomar solo los más recientes
-    const registrosRecientes = registrosFiltrados
-        .sort((a, b) => b.timestamp - a.timestamp)
-        .slice(0, LIMITE_REGISTROS)
-        .reverse(); // Revertir para mostrar cronológicamente
-    
-    if (registrosRecientes.length === 0) {
-        // Si no hay datos para el dispositivo seleccionado
+    // Función para actualizar la gráfica según el dispositivo seleccionado
+    function updateChartForDevice(selectedDevice, registros) {
+        const LIMITE_REGISTROS = 15;
+        
+        // Filtrar registros por dispositivo si no es "todos"
+        let registrosFiltrados = registros;
+        if (selectedDevice !== 'todos') {
+            registrosFiltrados = registros.filter(r => r.dispositivo === selectedDevice);
+        }
+        
+        // Ordenar por timestamp descendente y tomar solo los más recientes
+        const registrosRecientes = registrosFiltrados
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .slice(0, LIMITE_REGISTROS)
+            .reverse(); // Revertir para mostrar cronológicamente
+        
+        if (registrosRecientes.length === 0) {
+            // Si no hay datos para el dispositivo seleccionado
+            const ctx = document.getElementById('cronologia-chart').getContext('2d');
+            if (cronologiaChart) {
+                cronologiaChart.destroy();
+            }
+            
+            cronologiaChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: []
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `No hay datos disponibles para ${selectedDevice}`
+                        }
+                    }
+                }
+            });
+            return;
+        }
+        
+        // Configurar colores
+        const colors = [
+            'rgba(54, 162, 235, 1)',    // Azul
+            'rgba(255, 99, 132, 1)',     // Rojo
+            'rgba(75, 192, 192, 1)',     // Verde
+            'rgba(255, 159, 64, 1)',     // Naranja
+            'rgba(153, 102, 255, 1)',    // Morado
+            'rgba(201, 203, 207, 1)'     // Gris
+        ];
+        
+        let datasets = [];
+        let labels = [];
+        
+        if (selectedDevice === 'todos') {
+            // Mostrar todos los dispositivos como líneas separadas
+            const dispositivosMap = {};
+            
+            registrosRecientes.forEach(registro => {
+                if (!dispositivosMap[registro.dispositivo]) {
+                    dispositivosMap[registro.dispositivo] = {
+                        timestamps: [],
+                        valores: []
+                    };
+                }
+                
+                dispositivosMap[registro.dispositivo].timestamps.push(registro.timestamp);
+                dispositivosMap[registro.dispositivo].valores.push(registro.ritmo.valor);
+            });
+            
+            const allTimestamps = [...new Set(registrosRecientes.map(r => r.timestamp))].sort((a, b) => a - b);
+            labels = allTimestamps.map(ts => formatTimestamp(ts));
+            const dispositivosUnicos = Object.keys(dispositivosMap);
+            
+            datasets = dispositivosUnicos.map((dispositivo, index) => {
+                const color = colors[index % colors.length];
+                const deviceData = dispositivosMap[dispositivo];
+                
+                const valuesForAllTimestamps = allTimestamps.map(ts => {
+                    const indexInDevice = deviceData.timestamps.indexOf(ts);
+                    return indexInDevice !== -1 ? deviceData.valores[indexInDevice] : null;
+                });
+                
+                return {
+                    label: dispositivo,
+                    data: valuesForAllTimestamps,
+                    borderColor: color,
+                    backgroundColor: color,
+                    borderWidth: 2,
+                    pointRadius: function(context) {
+                        return context.raw !== null ? 5 : 0;
+                    },
+                    pointHoverRadius: 7,
+                    tension: 0.1,
+                    fill: false,
+                    spanGaps: true
+                };
+            });
+        } else {
+            // Mostrar solo el dispositivo seleccionado
+            const valores = registrosRecientes.map(r => r.ritmo.valor);
+            labels = registrosRecientes.map(r => formatTimestamp(r.timestamp));
+            
+            datasets = [{
+                label: selectedDevice,
+                data: valores,
+                borderColor: colors[0],
+                backgroundColor: colors[0],
+                borderWidth: 3,
+                pointRadius: 6,
+                pointHoverRadius: 8,
+                tension: 0.1,
+                fill: false
+            }];
+        }
+        
+        // Crear o actualizar gráfico
         const ctx = document.getElementById('cronologia-chart').getContext('2d');
+        
         if (cronologiaChart) {
             cronologiaChart.destroy();
         }
         
+        const titleText = selectedDevice === 'todos' 
+            ? `Evolución Temporal - Todos los dispositivos (Últimos ${LIMITE_REGISTROS} registros)`
+            : `Evolución Temporal - ${selectedDevice} (Últimos ${LIMITE_REGISTROS} registros)`;
+        
         cronologiaChart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: [],
-                datasets: []
+                labels: labels,
+                datasets: datasets
             },
             options: {
                 responsive: true,
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: 'Ritmo (bpm)'
+                        },
+                        suggestedMin: Math.max(40, Math.min(...registrosRecientes.map(r => r.ritmo.valor)) - 10),
+                        suggestedMax: Math.max(...registrosRecientes.map(r => r.ritmo.valor)) + 10
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Fecha/Hora'
+                        },
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45,
+                            callback: function(value, index, values) {
+                                if (values.length > 8 && index % Math.ceil(values.length / 6) !== 0) {
+                                    return '';
+                                }
+                                return labels[index];
+                            }
+                        }
+                    }
+                },
                 plugins: {
                     title: {
                         display: true,
-                        text: `No hay datos disponibles para ${selectedDevice}`
-                    }
-                }
-            }
-        });
-        return;
-    }
-    
-    // Configurar colores
-    const colors = [
-        'rgba(54, 162, 235, 1)',    // Azul
-        'rgba(255, 99, 132, 1)',     // Rojo
-        'rgba(75, 192, 192, 1)',     // Verde
-        'rgba(255, 159, 64, 1)',     // Naranja
-        'rgba(153, 102, 255, 1)',    // Morado
-        'rgba(201, 203, 207, 1)'     // Gris
-    ];
-    
-    let datasets = [];
-    let labels = [];
-    
-    if (selectedDevice === 'todos') {
-        // Mostrar todos los dispositivos como líneas separadas
-        const dispositivosMap = {};
-        
-        registrosRecientes.forEach(registro => {
-            if (!dispositivosMap[registro.dispositivo]) {
-                dispositivosMap[registro.dispositivo] = {
-                    timestamps: [],
-                    valores: []
-                };
-            }
-            
-            dispositivosMap[registro.dispositivo].timestamps.push(registro.timestamp);
-            dispositivosMap[registro.dispositivo].valores.push(registro.ritmo.valor);
-        });
-        
-        const allTimestamps = [...new Set(registrosRecientes.map(r => r.timestamp))].sort((a, b) => a - b);
-        labels = allTimestamps.map(ts => formatTimestamp(ts));
-        const dispositivosUnicos = Object.keys(dispositivosMap);
-        
-        datasets = dispositivosUnicos.map((dispositivo, index) => {
-            const color = colors[index % colors.length];
-            const deviceData = dispositivosMap[dispositivo];
-            
-            const valuesForAllTimestamps = allTimestamps.map(ts => {
-                const indexInDevice = deviceData.timestamps.indexOf(ts);
-                return indexInDevice !== -1 ? deviceData.valores[indexInDevice] : null;
-            });
-            
-            return {
-                label: dispositivo,
-                data: valuesForAllTimestamps,
-                borderColor: color,
-                backgroundColor: color,
-                borderWidth: 2,
-                pointRadius: function(context) {
-                    return context.raw !== null ? 5 : 0;
-                },
-                pointHoverRadius: 7,
-                tension: 0.1,
-                fill: false,
-                spanGaps: true
-            };
-        });
-    } else {
-        // Mostrar solo el dispositivo seleccionado
-        const valores = registrosRecientes.map(r => r.ritmo.valor);
-        labels = registrosRecientes.map(r => formatTimestamp(r.timestamp));
-        
-        datasets = [{
-            label: selectedDevice,
-            data: valores,
-            borderColor: colors[0],
-            backgroundColor: colors[0],
-            borderWidth: 3,
-            pointRadius: 6,
-            pointHoverRadius: 8,
-            tension: 0.1,
-            fill: false
-        }];
-    }
-    
-    // Crear o actualizar gráfico
-    const ctx = document.getElementById('cronologia-chart').getContext('2d');
-    
-    if (cronologiaChart) {
-        cronologiaChart.destroy();
-    }
-    
-    const titleText = selectedDevice === 'todos' 
-        ? `Evolución Temporal - Todos los dispositivos (Últimos ${LIMITE_REGISTROS} registros)`
-        : `Evolución Temporal - ${selectedDevice} (Últimos ${LIMITE_REGISTROS} registros)`;
-    
-    cronologiaChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: datasets
-        },
-        options: {
-            responsive: true,
-            interaction: {
-                intersect: false,
-                mode: 'index'
-            },
-            scales: {
-                y: {
-                    beginAtZero: false,
-                    title: {
-                        display: true,
-                        text: 'Ritmo (bpm)'
+                        text: titleText,
+                        font: {
+                            size: 14
+                        }
                     },
-                    suggestedMin: Math.max(40, Math.min(...registrosRecientes.map(r => r.ritmo.valor)) - 10),
-                    suggestedMax: Math.max(...registrosRecientes.map(r => r.ritmo.valor)) + 10
-                },
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Fecha/Hora'
-                    },
-                    ticks: {
-                        maxRotation: 45,
-                        minRotation: 45,
-                        callback: function(value, index, values) {
-                            if (values.length > 8 && index % Math.ceil(values.length / 6) !== 0) {
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                return labels[context[0].dataIndex];
+                            },
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.parsed.y} bpm`;
+                            },
+                            afterLabel: function(context) {
+                                const dispositivo = context.dataset.label;
+                                let timestamp, registro;
+                                
+                                if (selectedDevice === 'todos') {
+                                    const allTimestamps = [...new Set(registrosRecientes.map(r => r.timestamp))].sort((a, b) => a - b);
+                                    timestamp = allTimestamps[context.dataIndex];
+                                    registro = registrosRecientes.find(r => 
+                                        r.dispositivo === dispositivo && r.timestamp === timestamp
+                                    );
+                                } else {
+                                    registro = registrosRecientes[context.dataIndex];
+                                }
+                                
+                                if (registro) {
+                                    const anomaly = detectAnomaly(registro.ritmo.valor);
+                                    if (anomaly) {
+                                        return `⚠️ ${anomaly.message}`;
+                                    }
+                                }
                                 return '';
                             }
-                            return labels[index];
                         }
+                    },
+                    legend: {
+                        position: 'top',
+                        display: selectedDevice === 'todos', // Solo mostrar leyenda cuando hay múltiples dispositivos
+                        onClick: null
                     }
-                }
-            },
-            plugins: {
-                title: {
-                    display: true,
-                    text: titleText,
-                    font: {
-                        size: 14
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        title: function(context) {
-                            return labels[context[0].dataIndex];
-                        },
-                        label: function(context) {
-                            return `${context.dataset.label}: ${context.parsed.y} bpm`;
-                        },
-                        afterLabel: function(context) {
-                            const dispositivo = context.dataset.label;
-                            let timestamp, registro;
-                            
-                            if (selectedDevice === 'todos') {
-                                const allTimestamps = [...new Set(registrosRecientes.map(r => r.timestamp))].sort((a, b) => a - b);
-                                timestamp = allTimestamps[context.dataIndex];
-                                registro = registrosRecientes.find(r => 
-                                    r.dispositivo === dispositivo && r.timestamp === timestamp
-                                );
-                            } else {
-                                registro = registrosRecientes[context.dataIndex];
-                            }
-                            
-                            if (registro) {
-                                const anomaly = detectAnomaly(registro.ritmo.valor);
-                                if (anomaly) {
-                                    return `⚠️ ${anomaly.message}`;
-                                }
-                            }
-                            return '';
-                        }
-                    }
-                },
-                legend: {
-                    position: 'top',
-                    display: selectedDevice === 'todos', // Solo mostrar leyenda cuando hay múltiples dispositivos
-                    onClick: null
                 }
             }
-        }
-    });
-}
+        });
+    }
 
-// Función principal para preparar gráfico cronológico con selector de dispositivos
-function prepareTimeChart(registros) {
-    // Guardar todos los registros globalmente
-    todosLosRegistros = registros;
-    
-    // Crear el selector de dispositivos
-    createDeviceSelector(registros);
-    
-    // Obtener el dispositivo seleccionado actualmente
-    const deviceSelect = document.getElementById('device-select');
-    const selectedDevice = deviceSelect ? deviceSelect.value : 'todos';
-    
-    // Actualizar la gráfica
-    updateChartForDevice(selectedDevice, registros);
-}
+    // Función principal para preparar gráfico cronológico con selector de dispositivos
+    function prepareTimeChart(registros) {
+        // Guardar todos los registros globalmente
+        todosLosRegistros = registros;
+        
+        // Crear el selector de dispositivos
+        createDeviceSelector(registros);
+        
+        // Obtener el dispositivo seleccionado actualmente
+        const deviceSelect = document.getElementById('device-select');
+        const selectedDevice = deviceSelect ? deviceSelect.value : 'todos';
+        
+        // Actualizar la gráfica
+        updateChartForDevice(selectedDevice, registros);
+    }
 
     // Manejar cambio de orden
     document.getElementById('orden-select').addEventListener('change', function() {
